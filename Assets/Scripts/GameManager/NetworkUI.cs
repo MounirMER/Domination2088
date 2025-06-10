@@ -9,15 +9,22 @@ public class NetworkUI : MonoBehaviour
 
     private void Awake()
     {
-        hostButton.onClick.AddListener(() =>
-        {
-            NetworkManager.Singleton.StartHost();
-            NetworkManager.Singleton.SceneManager.LoadScene("Arena", UnityEngine.SceneManagement.LoadSceneMode.Single);
-        });
+        hostButton.onClick.AddListener(OnHostClicked);
+        clientButton.onClick.AddListener(OnClientClicked);
+    }
 
-        clientButton.onClick.AddListener(() =>
-        {
-            NetworkManager.Singleton.StartClient();
-        });
+    private void OnHostClicked()
+    {
+        if (NetworkManager.Singleton == null) return;
+
+        NetworkManager.Singleton.StartHost();
+        NetworkManager.Singleton.SceneManager.LoadScene("Arena", UnityEngine.SceneManagement.LoadSceneMode.Single);
+    }
+
+    private void OnClientClicked()
+    {
+        if (NetworkManager.Singleton == null) return;
+
+        NetworkManager.Singleton.StartClient();
     }
 }

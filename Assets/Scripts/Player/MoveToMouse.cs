@@ -1,49 +1,71 @@
-using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using Unity.Netcode;
+using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.SceneManagement;
 
 public class MoveToMouse : NetworkBehaviour
 {
+    private static List<MoveToMouse> moveableObjects = new();
     private Transform[] spawnPoints;
     private bool hasSpawned = false;
-    
-    public static List<MoveToMouse> moveableObjects = new List<MoveToMouse>();
-    [SerializeField] private float speed = 5f;
+    private bool selected = false;
     private Vector3 target;
-    private bool selected;
 
+    [SerializeField] private float speed = 5f;
+    private NavMeshAgent agent;
+    private bool agentEnabled = false;
+    
+    private Animator animator;
+    
     private void Start()
     {
+        animator = GetComponent<Animator>();
+        
+        agent = GetComponent<NavMeshAgent>();
+        if (agent != null)
+        {
+            agent.updateRotation = false;
+            agent.updateUpAxis = false;
+        }
+
         moveableObjects.Add(this);
         target = transform.position;
     }
 
     private void Update()
     {
+        if (!IsOwner) return;
+
         if (Input.GetMouseButtonDown(0) && selected)
         {
-            target = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            target.z = 0; 
+            Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            mouseWorld.z = 0f;
+
+            if (NavMesh.SamplePosition(mouseWorld, out NavMeshHit hit, 1f, NavMesh.AllAreas))
+            {
+                agent.SetDestination(hit.position);
+                Debug.Log("Déplacement vers : " + hit.position);
+                animator.SetBool("Running", true);
+            }
+            else
+            {
+                Debug.LogWarning("Zone cliquée hors NavMesh");
+            }
         }
-        
-        transform.position = Vector3.MoveTowards(transform.position, target, speed * Time.deltaTime);
     }
 
     private void OnMouseDown()
     {
+        if (!IsOwner) return;
         selected = true;
-        // gameObject.GetComponent<SpriteRenderer>().color = Color.red;
-
-        foreach (MoveToMouse moveableObject in moveableObjects)
+        animator.SetBool("Selected", true);
+        foreach (var obj in moveableObjects)
         {
-            if (moveableObject != this)
-            {
-                moveableObject.selected = false;
-                // moveableObject.gameObject.GetComponent<SpriteRenderer>().color = Color.white;
-            }
+            if (obj != this)
+                obj.selected = false;
         }
     }
 
@@ -51,45 +73,55 @@ public class MoveToMouse : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        // Si on est déjà dans la scène de jeu, on peut tenter d'initialiser tout de suite
-        TrySpawn();
-        
-        // Et on s'abonne à l'événement de chargement de scène au cas où on arrive après
         SceneManager.sceneLoaded += OnSceneLoaded;
+        StartCoroutine(SpawnWhenReady());
     }
 
     public override void OnNetworkDespawn()
     {
-        // Nettoyage
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Dès que la nouvelle scène est prête, on retente le spawn
-        TrySpawn();
+        StartCoroutine(SpawnWhenReady());
     }
 
-    private void TrySpawn()
+    private IEnumerator SpawnWhenReady()
     {
-        if (hasSpawned) return;
+        if (hasSpawned) yield break;
 
-        // Trouve tes SpawnPoint (tag "SpawnPoint")  
-        var s = GameObject.FindGameObjectsWithTag("SpawnPoint");
-        if (s.Length == 0) return;  // pas encore dispo → on sort et on réessaiera plus tard
+        // Attendre que le NavMesh soit prêt
+        while (NavMesh.CalculateTriangulation().vertices.Length == 0)
+            yield return null;
 
-        // Trie-les par nom, récupère uniquement leur Transform
-        spawnPoints = s
-            .OrderBy(go => go.name)
-            .Select(go => go.transform)
-            .ToArray();
+        // Récupérer les spawn points
+        var found = GameObject.FindGameObjectsWithTag("SpawnPoint");
+        if (found.Length == 0) yield break;
 
-        // Calcule un index stable à partir de l'OwnerClientId
+        spawnPoints = found.OrderBy(go => go.name).Select(go => go.transform).ToArray();
         int index = (int)(OwnerClientId % (ulong)spawnPoints.Length);
-
-        // Positionne ton joueur
         transform.position = spawnPoints[index].position;
 
-        hasSpawned = true;         // on ne recommencera pas
+        if (agent != null && !agent.enabled)
+        {
+            agent.enabled = true; // <-- activer seulement une fois sur le bon sol
+        }
+
+        hasSpawned = true;
+    }
+
+    private void CheckEnemyInRange()
+    {
+        // Implémentez la logique pour vérifier si un ennemi est à portée
+        // et ajustez le comportement en conséquence.
+        // Par exemple, vous pourriez changer l'animation ou arrêter le mouvement.
+    }
+
+    private void Shoot()
+    {
+        // Implémentez la logique de tir ici.
+        // Vous pourriez instancier un projectile ou jouer une animation de tir.
+        Debug.Log("Tir effectué !");
     }
 }
