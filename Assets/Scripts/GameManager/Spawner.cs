@@ -9,10 +9,10 @@ public class Spawner : NetworkBehaviour
     {
         if (NetworkManager.Singleton.LocalClientId != ownerClientId) return;
 
-        if (TroopSelectionUI.SelectedTroopPrefab != null)
-        {
-            SpawnTroopServerRpc(TroopSelectionUI.SelectedTroopIndex);
-        }
+        //if (TroopSelectionUI.SelectedTroopPrefab != null)
+        //{
+        //    SpawnTroopServerRpc(TroopSelectionUI.SelectedTroopIndex);
+        //}
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -20,11 +20,11 @@ public class Spawner : NetworkBehaviour
     {
         if (rpcParams.Receive.SenderClientId != ownerClientId) return;
 
-        GameObject troopPrefab = TroopManager.Instance.GetTroopPrefab(troopIndex);
-        if (troopPrefab == null) return;
+        //GameObject troopPrefab = TroopManager.Instance.GetTroopPrefab(troopIndex);
+        //if (troopPrefab == null) return;
 
-        GameObject spawnedTroop = Instantiate(troopPrefab, transform.position, Quaternion.identity);
-        NetworkObject netObj = spawnedTroop.GetComponent<NetworkObject>();
-        netObj.Spawn();
+        //GameObject spawnedTroop = Instantiate(troopPrefab, transform.position, Quaternion.identity);
+        //NetworkObject netObj = spawnedTroop.GetComponent<NetworkObject>();
+        //netObj.Spawn();
     }
 }
