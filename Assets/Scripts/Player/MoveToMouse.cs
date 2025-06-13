@@ -14,7 +14,6 @@ public class MoveToMouse : NetworkBehaviour
     private bool selected = false;
     private Vector3 target;
 
-    [SerializeField] private float speed = 5f;
     private NavMeshAgent agent;
     private bool agentEnabled = false;
     
@@ -103,25 +102,23 @@ public class MoveToMouse : NetworkBehaviour
         int index = (int)(OwnerClientId % (ulong)spawnPoints.Length);
         transform.position = spawnPoints[index].position;
 
-        if (agent != null && !agent.enabled)
+        // Attente d'une frame supplémentaire pour garantir le placement sur le NavMesh
+        yield return null;
+
+        if (agent != null)
         {
-            agent.enabled = true; // <-- activer seulement une fois sur le bon sol
+            agent.enabled = true;
+
+            // S'assurer explicitement que l'agent est sur le NavMesh
+            if (!agent.isOnNavMesh)
+            {
+                if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+                    agent.Warp(hit.position);
+                else
+                    Debug.LogError("Impossible de placer l'agent sur le NavMesh même après SamplePosition.");
+            }
         }
 
         hasSpawned = true;
-    }
-
-    private void CheckEnemyInRange()
-    {
-        // Implémentez la logique pour vérifier si un ennemi est à portée
-        // et ajustez le comportement en conséquence.
-        // Par exemple, vous pourriez changer l'animation ou arrêter le mouvement.
-    }
-
-    private void Shoot()
-    {
-        // Implémentez la logique de tir ici.
-        // Vous pourriez instancier un projectile ou jouer une animation de tir.
-        Debug.Log("Tir effectué !");
     }
 }
